@@ -1,0 +1,1 @@
+{"options":{},"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_","ns":"Typography.Services"}],"uuid":"84ddb0ed83d746cf8e1920ccf063b826"}
