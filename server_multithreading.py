@@ -283,12 +283,15 @@ def myconverter(o):
         return o.__str__()
 
 def add_operation_in_journal(opeartion,clientAddress):
+    mutex = threading.Lock()
     date=datetime.datetime.now()
     date = str(date)
     clientAddress = str(clientAddress)
+    mutex.acquire()
     f = open('journal.txt', 'a')
     f.write(opeartion + "=====" + clientAddress + "=====" + date + '\n')
     f.close()
+    mutex.release()
 
 class singleinstance:
     """ Limits application to single instance """
@@ -309,10 +312,10 @@ class singleinstance:
 from sys import exit
 myapp = singleinstance()
 
+
 if myapp.aleradyrunning():
     print("Another instance of this program is already running")
     exit(0)
 
-#t.daemon = True
-mutex = threading.Lock()
+
 start_server() # Запускаем функцию старта сервера. Вызов функции должен быть ниже, чем определение этой функции в файле
