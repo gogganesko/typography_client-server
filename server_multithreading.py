@@ -283,15 +283,18 @@ def myconverter(o):
         return o.__str__()
 
 def add_operation_in_journal(opeartion,clientAddress):
-    mutex = threading.Lock()
-    date=datetime.datetime.now()
-    date = str(date)
-    clientAddress = str(clientAddress)
-    mutex.acquire()
-    f = open('journal.txt', 'a')
-    f.write(opeartion + "=====" + clientAddress + "=====" + date + '\n')
-    f.close()
-    mutex.release()
+    handle = win32event.CreateMutex(None, 1, 'FileMutexName')
+    if win32api.GetLastError() == ERROR_ALREADY_EXISTS:
+        print('File is busy')
+    else: 
+        date=datetime.datetime.now()
+        date = str(date)
+        clientAddress = str(clientAddress)
+        f = open('journal.txt', 'a')
+        #while True:
+            #f.write('1')
+        f.write(opeartion + "=====" + clientAddress + "=====" + date + '\n')
+        f.close()
 
 class singleinstance:
     """ Limits application to single instance """
