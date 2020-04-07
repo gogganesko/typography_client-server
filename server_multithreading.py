@@ -295,6 +295,7 @@ def add_operation_in_journal(opeartion,clientAddress):
             #f.write('1')
         f.write(opeartion + "=====" + clientAddress + "=====" + date + '\n')
         f.close()
+    win32api.CloseHandle(handle)
 
 class singleinstance:
     """ Limits application to single instance """
