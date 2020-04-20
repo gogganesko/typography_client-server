@@ -10,6 +10,7 @@ from bson.json_util import dumps, loads
 from bson import json_util
 import win32event
 import win32api
+import win32file
 from winerror import ERROR_ALREADY_EXISTS
 from sys import exit
 import threading
@@ -142,6 +143,10 @@ def fulfill_request(clientConnection, clientAddress, cid):
         print("Считываем список услуг")
         add_operation_in_journal('readservices', clientAddress)
         answer = read_services() # Вызывается функция чтения книг, данные из функции записываются в переменную answer
+        # if add_operation_in_journal('readservices', clientAddress) == False:
+        #     answer = "Файл журнала занят другим клиентом"
+        # else:
+        #     answer = read_services() # Вызывается функция чтения книг, данные из функции записываются в переменную answer
 
     if data["command"] == 'readsales':
         print("Считываем список акций")
@@ -282,20 +287,67 @@ def myconverter(o):
     if isinstance(o, datetime.datetime):
         return o.__str__()
 
+# def add_operation_in_journal(opeartion,clientAddress):
+#     import time   
+#     while True:
+#         mutex = win32event.CreateMutex(None, 1 , "FileMutex")
+#         res = win32event.WaitForSingleObject(mutex, 1000)
+#         if(res > 0):
+#             print(f'{clientAddress} ждет')
+#             continue
+#         else:
+#             print(f'{clientAddress} зашел')
+#             time.sleep(5)
+#             date=datetime.datetime.now()
+#             date = str(date)
+#             f = open('journal2.txt', 'a')
+#             f.write(str(clientAddress))
+#             f.close()            
+#             win32event.ReleaseMutex(mutex)
+           
+#             break
+
+class FileMutex:
+    def __init__(self):
+        self.mutexname = "typography_filemutex"
+
+        self.mutex = win32event.CreateMutex(None, 1, self.mutexname)
+        self.lasterror = win32api.GetLastError()
+    
+    def release(self):
+        return win32event.ReleaseMutex(self.mutex)
+
+mutex = FileMutex()
+mutex.release()
+
 def add_operation_in_journal(opeartion,clientAddress):
-    handle = win32event.CreateMutex(None, 1, 'FileMutexName')
-    if win32api.GetLastError() == ERROR_ALREADY_EXISTS:
-        print('File is busy')
-    else: 
-        date=datetime.datetime.now()
-        date = str(date)
+    import time
+    mutex = FileMutex()
+    date=datetime.datetime.now()
+    date = str(date)
+    row = str(opeartion) + "=====" + str(clientAddress) + "=====" + str(date) + '\n'
+    while True:
+        res = win32event.WaitForSingleObject(mutex.mutex, win32event.INFINITE )
+        print(str(clientAddress) + " " + " зашёл")       
         clientAddress = str(clientAddress)
+        time.sleep(5)
         f = open('journal.txt', 'a')
-        #while True:
-            #f.write('1')
-        f.write(opeartion + "=====" + clientAddress + "=====" + date + '\n')
+        f.write(row)
         f.close()
-    win32api.CloseHandle(handle)
+        mutex.release()
+        return
+
+    # if win32api.GetLastError() == ERROR_ALREADY_EXISTS:
+    #     print('File is busy')
+    #     return False
+    # else: 
+    #     date=datetime.datetime.now()
+    #     date = str(date)
+    #     clientAddress = str(clientAddress)        
+    #     while True:
+    #         f = open('journal1.txt', 'a')
+    #     return True
+    # win32api.CloseHandle(handle)
 
 class singleinstance:
     """ Limits application to single instance """
@@ -311,6 +363,8 @@ class singleinstance:
     def __del__(self):
         if self.mutex:
             win32api.CloseHandle(self.mutex)
+
+
 
 
 from sys import exit
