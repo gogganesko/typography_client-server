@@ -12,6 +12,7 @@ def start_client(): # Основная функция, запускающая к
     client.connect((SERVER, PORT))
     isauth = 0
     authuserid = 0
+    token = ""
 
     print ("Подключились к серверу")
 
@@ -51,7 +52,7 @@ def start_client(): # Основная функция, запускающая к
             msg["command"] = "readsales" # Команда, передаваемая серверу будет add        
         if task == 2:                       
             msg["command"] = "add"            
-            msg["object"] = create_order(authuserid)
+            msg["object"] = create_order(authuserid)            
         if task == 3:
             msg["command"] = "bye"
         if task == 4:
@@ -90,6 +91,7 @@ def start_client(): # Основная функция, запускающая к
         if task == 11:
             msg["command"] = "showmessages"
             msg["OrderID"] = int(input("Введите ID заказа:"))
+            msg["authuserid"] = authuserid
         if task == 12:
             msg["command"] = "findordesbydate"
             msg["StartDate"] = str(input("Введите начальную дату для поиска в формате\nгггг,мм,дд:"))

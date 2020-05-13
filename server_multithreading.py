@@ -74,7 +74,7 @@ def serve_client(client_sock, cid, client_addr):
             print(f'Клиент #{cid} преждевременно отключился')
             break
         else:
-            client_sock.send(bytes(json.dumps(answer), 'UTF-8')) # Отправка данных клиенту
+            client_sock.send(bytes(json.dumps(answer, default = myconverter), 'UTF-8')) # Отправка данных клиенту
 
 def fulfill_request(clientConnection, clientAddress, cid):
     try:
@@ -128,16 +128,24 @@ def fulfill_request(clientConnection, clientAddress, cid):
 
     if data["command"] == 'add':
         print("Добавляем заказ")
-        add_operation_in_journal('add', clientAddress)
-        answer = add_order(data["object"]) # Передаем объект из полученного словаря в функцию добавления книги.  В данном случае объект - это книга
+        x = db["Persons"].find_one({"_id":data["authuserid"]})
+        if check_token(x) == True:
+            add_operation_in_journal('add', clientAddress)
+            answer = add_order(data["object"]) # Передаем объект из полученного словаря в функцию добавления книги.  В данном случае объект - это книга
+        else:
+            answer = "Вы не авторизированы"
+
 
     if data["command"] == 'changepswd':
-        x = db["Persons"].find_one({"_id":data["authuserid"]})                
-        x["Password"] = data["password"]
-        db["Persons"].save(x)
-        add_operation_in_journal('changepswd', clientAddress)
-        print("Попытка смены пароля прошла успешно ", clientAddress)
-        answer = "Ваш пароль был успешно изменён"
+        x = db["Persons"].find_one({"_id":data["authuserid"]})
+        if check_token(x) == True:
+            x["Password"] = data["password"]
+            db["Persons"].save(x)
+            add_operation_in_journal('changepswd', clientAddress)
+            print("Попытка смены пароля прошла успешно ", clientAddress)
+            answer = "Ваш пароль был успешно изменён"
+        else:
+            answer = "Вы не авторизованы"
 
     if data["command"] == 'readservices': # Получена команда чтения списка книг
         print("Считываем список услуг")
@@ -155,26 +163,52 @@ def fulfill_request(clientConnection, clientAddress, cid):
 
     if data["command"] == 'readorders':
         print("Считываем список закаов")
-        add_operation_in_journal('readorders', clientAddress)
-        answer = read_orders(data["authuserid"])
+        x = db["Persons"].find_one({"_id":data["authuserid"]})
+        if check_token(x) == True:            
+            add_operation_in_journal('readorders', clientAddress)
+            answer = read_orders(data["authuserid"])
+        else:
+            answer == "Вы не авторизованы"
 
     if data["command"] == 'showorder':
-        add_operation_in_journal('showorder', clientAddress)
-        answer = read_order(data["OrderID"])
+        x = db["Persons"].find_one({"_id":data["authuserid"]})
+        if check_token(x) == True:
+            add_operation_in_journal('showorder', clientAddress)
+            answer = read_order(data["OrderID"])
+        else: 
+            answer = "вы не авторизированы"
         
     if data["command"] == 'addmessage':
-        add_operation_in_journal('addmessage', clientAddress)
-        answer = add_chatmessage(data["object"])
+        x = db["Persons"].find_one({"_id":data["authuserid"]})
+        if check_token(x) == True:        
+            add_operation_in_journal('addmessage', clientAddress)
+            answer = add_chatmessage(data["object"])
+        else: 
+            answer = "вы не авторизированы"
 
     if data["command"] == 'showmessages':
-        add_operation_in_journal('showmessages', clientAddress)
-        answer = read_chatmessages(data["OrderID"])
+        x = db["Persons"].find_one({"_id":data["authuserid"]})
+        if check_token(x) == True:
+            add_operation_in_journal('showmessages', clientAddress)
+            answer = read_chatmessages(data["OrderID"])
+        else: 
+            answer = "вы не авторизированы"
 
     if data["command"] == 'findordesbydate':
-        add_operation_in_journal('findordersbydate', clientAddress)
-        answer = read_orders_by_date(data["authuserid"], data["StartDate"], data["EndDate"])
+        x = db["Persons"].find_one({"_id":data["authuserid"]})
+        if check_token(x) == True:
+            add_operation_in_journal('findordersbydate', clientAddress)
+            answer = read_orders_by_date(data["authuserid"], data["StartDate"], data["EndDate"])
+        else: 
+            answer = "вы не авторизированы"
 
     return answer
+
+def check_token(user):    
+    if user["Token"]:
+        return True
+    else: 
+        return False
 
 def add_order(order):
     neworder = {}
@@ -287,25 +321,6 @@ def myconverter(o):
     if isinstance(o, datetime.datetime):
         return o.__str__()
 
-# def add_operation_in_journal(opeartion,clientAddress):
-#     import time   
-#     while True:
-#         mutex = win32event.CreateMutex(None, 1 , "FileMutex")
-#         res = win32event.WaitForSingleObject(mutex, 1000)
-#         if(res > 0):
-#             print(f'{clientAddress} ждет')
-#             continue
-#         else:
-#             print(f'{clientAddress} зашел')
-#             time.sleep(5)
-#             date=datetime.datetime.now()
-#             date = str(date)
-#             f = open('journal2.txt', 'a')
-#             f.write(str(clientAddress))
-#             f.close()            
-#             win32event.ReleaseMutex(mutex)
-           
-#             break
 
 class FileMutex:
     def __init__(self):
@@ -330,24 +345,11 @@ def add_operation_in_journal(opeartion,clientAddress):
         res = win32event.WaitForSingleObject(mutex.mutex, win32event.INFINITE )
         print(str(clientAddress) + " " + " зашёл")       
         clientAddress = str(clientAddress)
-        time.sleep(5)
         f = open('journal.txt', 'a')
         f.write(row)
         f.close()
         mutex.release()
         return
-
-    # if win32api.GetLastError() == ERROR_ALREADY_EXISTS:
-    #     print('File is busy')
-    #     return False
-    # else: 
-    #     date=datetime.datetime.now()
-    #     date = str(date)
-    #     clientAddress = str(clientAddress)        
-    #     while True:
-    #         f = open('journal1.txt', 'a')
-    #     return True
-    # win32api.CloseHandle(handle)
 
 class singleinstance:
     """ Limits application to single instance """
@@ -363,8 +365,6 @@ class singleinstance:
     def __del__(self):
         if self.mutex:
             win32api.CloseHandle(self.mutex)
-
-
 
 
 from sys import exit
